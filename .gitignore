@@ -1,0 +1,10 @@
+# Upload only the production web app and its deployment metadata.
+*
+!.gitignore
+!README.md
+!index.html
+!style.css
+!suffix_wm_code.js
+!suffix_wm.js
+!suffix_wm.wasm
+!_headers

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FM-indexとWavelet Matrixを使った、ブラウザ上で動く高速テキスト検索ツールです。">
+    <title>FM-index Text Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <main class="app-shell">
+        <header class="app-header">
+            <div>
+                <p class="eyebrow">FM-index + Wavelet Matrix</p>
+                <h1>高速テキスト検索</h1>
+                <p class="lead">テキストファイルをブラウザ内でインデックス化し、検索結果をすばやく表示します。</p>
+            </div>
+            <div id="runtimeStatus" class="runtime-status" role="status" aria-live="polite">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="runtimeStatusText">Wasmを準備中</span>
+            </div>
+        </header>
+
+        <section class="control-panel" aria-label="検索コントロール">
+            <div class="file-row">
+                <input class="visually-hidden" type="file" id="fileInput" accept=".txt,text/plain" disabled>
+                <label class="button button-primary" for="fileInput">テキストを選択</label>
+                <span id="fileName" class="file-name">ファイルが選択されていません</span>
+            </div>
+
+            <div class="search-row">
+                <label class="field-label" for="searchPattern">検索文字列</label>
+                <div class="search-controls">
+                    <div class="search-field-wrap">
+                        <span class="search-icon" aria-hidden="true">⌕</span>
+                        <input type="search" id="searchPattern" placeholder="検索する文字列を入力"
+                            autocomplete="off" spellcheck="false" disabled>
+                    </div>
+                    <button id="previousMatch" class="button button-secondary" type="button" disabled
+                        aria-label="前の検索結果へ移動">↑ 前へ</button>
+                    <button id="nextMatch" class="button button-secondary" type="button" disabled
+                        aria-label="次の検索結果へ移動">↓ 次へ</button>
+                </div>
+                <p class="shortcut-hint"><kbd>Enter</kbd> で次へ、<kbd>Shift</kbd> + <kbd>Enter</kbd> で前へ移動</p>
+            </div>
+        </section>
+
+        <section class="stats" aria-label="検索状況" aria-live="polite">
+            <div class="stat-card">
+                <span class="stat-label">総文字数</span>
+                <strong id="charCount">0</strong>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">マッチ数</span>
+                <strong id="matchCount">0</strong>
+            </div>
+            <div class="stat-card stat-card-wide">
+                <span class="stat-label">現在位置</span>
+                <strong id="currentMatch">—</strong>
+            </div>
+        </section>
+
+        <section class="document-panel" aria-label="テキストプレビュー">
+            <div class="document-toolbar">
+                <span>テキストプレビュー</span>
+                <span id="searchHint">テキストファイルを選択してください</span>
+            </div>
+            <div id="textContainer" tabindex="0">
+                <div id="displayArea"></div>
+                <div id="highlightOverlay" aria-hidden="true"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="loading" class="loading-overlay" role="status" aria-live="assertive" hidden>
+        <div class="loading-card">
+            <div class="spinner" aria-hidden="true"></div>
+            <span>インデックスを作成中...</span>
+        </div>
+    </div>
+
+    <script src="suffix_wm_code.js"></script>
+    <script src="suffix_wm.js"></script>
+</body>
+
+</html>
