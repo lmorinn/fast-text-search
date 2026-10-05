@@ -1,6 +1,11 @@
 var Module = {
     onRuntimeInitialized() {
+        const PREVIEW_WINDOW_SIZE = 200000;
+
         let fmIndex = null;
+        let sourceText = '';
+        let previewStart = 0;
+        let previewEnd = 0;
         let activeMatchPosition = -1;
         let cachedPattern = '';
         let cachedMatchCount = 0;
@@ -19,6 +24,7 @@ var Module = {
         const loading = document.getElementById('loading');
         const previousButton = document.getElementById('previousMatch');
         const nextButton = document.getElementById('nextMatch');
+        const previewRangeElement = document.getElementById('previewRange');
         const searchHint = document.getElementById('searchHint');
 
         const charWidth = getCharWidth();
@@ -68,7 +74,8 @@ var Module = {
                     return;
                 }
 
-                displayArea.textContent = text;
+                sourceText = text;
+                renderPreviewAround(0);
                 fileNameElement.textContent = file.name;
                 charCountElement.textContent = formatNumber(text.length);
                 searchInput.value = '';
@@ -198,11 +205,11 @@ var Module = {
 
             const visibleRange = getVisibleCharacterRange();
             let rangeStart = Math.max(visibleRange.start - 1500, 0);
-            let rangeEnd = Math.min(visibleRange.end + 1000, displayArea.textContent.length);
+            let rangeEnd = Math.min(visibleRange.end + 1000, sourceText.length);
 
             if (Number.isInteger(anchorPosition) && anchorPosition >= 0) {
                 rangeStart = Math.min(rangeStart, Math.max(anchorPosition - 1500, 0));
-                rangeEnd = Math.max(rangeEnd, Math.min(anchorPosition + pattern.length + 1000, displayArea.textContent.length));
+                rangeEnd = Math.max(rangeEnd, Math.min(anchorPosition + pattern.length + 1000, sourceText.length));
             }
 
             const result = fmIndex.substrPositionLR(pattern, rangeStart, rangeEnd);
@@ -221,7 +228,7 @@ var Module = {
 
         function moveToMatch(direction) {
             const pattern = searchInput.value;
-            const text = displayArea.textContent;
+            const text = sourceText;
 
             if (!fmIndex || pattern.length === 0 || text.length === 0) {
                 return;
@@ -250,16 +257,54 @@ var Module = {
 
             activeMatchPosition = nextPosition;
             currentMatchElement.textContent = formatNumber(nextPosition + 1) + '文字目';
-            scrollToPosition(nextPosition);
+            renderPreviewAround(nextPosition);
+            scrollToPosition(nextPosition, pattern.length);
             requestAnimationFrame(function () {
                 highlightMatches(nextPosition);
             });
         }
 
-        function scrollToPosition(position) {
-            const metrics = getLayoutMetrics();
-            const targetLine = Math.floor(position / metrics.charsPerLine);
-            const targetTop = metrics.paddingTop + (targetLine * metrics.lineHeight) - (container.clientHeight / 2) + (metrics.lineHeight / 2);
+        function renderPreviewAround(position) {
+            const maximumStart = Math.max(sourceText.length - PREVIEW_WINDOW_SIZE, 0);
+            const centeredStart = Math.max(position - Math.floor(PREVIEW_WINDOW_SIZE / 2), 0);
+            const nextStart = Math.min(centeredStart, maximumStart);
+            const nextEnd = Math.min(nextStart + PREVIEW_WINDOW_SIZE, sourceText.length);
+
+            if (nextStart === previewStart && nextEnd === previewEnd && displayArea.firstChild) {
+                return;
+            }
+
+            previewStart = nextStart;
+            previewEnd = nextEnd;
+            displayArea.textContent = sourceText.slice(previewStart, previewEnd);
+            highlightOverlay.replaceChildren();
+            container.scrollTop = 0;
+            container.scrollLeft = 0;
+            previewRangeElement.textContent = sourceText.length > 0
+                ? formatNumber(previewStart + 1) + '–' + formatNumber(previewEnd) + '文字を表示'
+                : '';
+        }
+
+        function scrollToPosition(position, length) {
+            const textNode = displayArea.firstChild;
+            const localPosition = position - previewStart;
+
+            if (!textNode || localPosition < 0 || localPosition > textNode.length) {
+                return;
+            }
+
+            const range = document.createRange();
+            range.setStart(textNode, localPosition);
+            range.setEnd(textNode, Math.min(localPosition + Math.max(length, 1), textNode.length));
+            const rect = range.getClientRects()[0];
+            range.detach();
+
+            if (!rect) {
+                return;
+            }
+
+            const containerRect = container.getBoundingClientRect();
+            const targetTop = container.scrollTop + rect.top - containerRect.top - (container.clientHeight / 2) + (rect.height / 2);
 
             container.scrollTo({
                 top: Math.max(0, targetTop),
@@ -291,11 +336,17 @@ var Module = {
             const containerRect = container.getBoundingClientRect();
 
             positions.forEach(function (position) {
+                const localPosition = position - previewStart;
+
+                if (localPosition < 0 || localPosition + length > textNode.length) {
+                    return;
+                }
+
                 const range = document.createRange();
 
                 try {
-                    range.setStart(textNode, position);
-                    range.setEnd(textNode, Math.min(position + length, textNode.length));
+                    range.setStart(textNode, localPosition);
+                    range.setEnd(textNode, localPosition + length);
                 } catch (error) {
                     console.error('ハイライト位置の計算に失敗しました:', error);
                     return;
@@ -321,11 +372,11 @@ var Module = {
             const metrics = getLayoutMetrics();
             const firstVisibleLine = Math.floor(Math.max(container.scrollTop - metrics.paddingTop, 0) / metrics.lineHeight);
             const visibleLines = Math.ceil(container.clientHeight / metrics.lineHeight) + 1;
-            const textLength = displayArea.textContent.length;
+            const previewLength = previewEnd - previewStart;
 
             return {
-                start: Math.min(firstVisibleLine * metrics.charsPerLine, textLength),
-                end: Math.min((firstVisibleLine + visibleLines) * metrics.charsPerLine, textLength)
+                start: previewStart + Math.min(firstVisibleLine * metrics.charsPerLine, previewLength),
+                end: previewStart + Math.min((firstVisibleLine + visibleLines) * metrics.charsPerLine, previewLength)
             };
         }
 

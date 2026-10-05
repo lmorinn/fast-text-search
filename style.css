@@ -281,6 +281,19 @@ kbd {
     color: var(--danger);
 }
 
+.preview-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    min-width: 0;
+}
+
+#previewRange {
+    color: var(--blue-700);
+    white-space: nowrap;
+}
+
 #textContainer {
     position: relative;
     height: min(65vh, 800px);
@@ -377,6 +390,12 @@ kbd {
     .document-toolbar {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .preview-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
     }
 
     .search-controls {
