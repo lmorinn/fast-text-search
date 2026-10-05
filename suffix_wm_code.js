@@ -20,14 +20,11 @@ var Module = {
         const previousButton = document.getElementById('previousMatch');
         const nextButton = document.getElementById('nextMatch');
         const searchHint = document.getElementById('searchHint');
-        const runtimeStatus = document.getElementById('runtimeStatus');
-        const runtimeStatusText = document.getElementById('runtimeStatusText');
 
         const charWidth = getCharWidth();
         const lineHeight = getLineHeight(container);
 
         fileInput.disabled = false;
-        setRuntimeStatus('準備完了', 'ready');
 
         fileInput.addEventListener('change', function (event) {
             const file = event.target.files[0];
@@ -37,13 +34,13 @@ var Module = {
             }
 
             if (file.name.split('.').pop().toLowerCase() !== 'txt') {
-                setRuntimeStatus('txtファイルを選択してください', 'error');
+                setAppStatus('txtファイルを選択してください', 'error');
                 fileInput.value = '';
                 return;
             }
 
             setBusy(true);
-            setRuntimeStatus('インデックスを作成中', 'loading');
+            setAppStatus('インデックスを作成中');
 
             const reader = new FileReader();
 
@@ -51,7 +48,7 @@ var Module = {
                 let text = loadEvent.target.result;
 
                 if (!isValidText(text)) {
-                    setRuntimeStatus('unsigned charで扱えない文字が含まれています', 'error');
+                    setAppStatus('unsigned charで扱えない文字が含まれています', 'error');
                     setBusy(false);
                     fileInput.value = '';
                     return;
@@ -67,7 +64,7 @@ var Module = {
                     fmIndex = new Module.FMindex(text);
                 } catch (error) {
                     console.error('インデックスの作成に失敗しました:', error);
-                    setRuntimeStatus('インデックスの作成に失敗しました', 'error');
+                    setAppStatus('インデックスの作成に失敗しました', 'error');
                     setBusy(false);
                     return;
                 }
@@ -80,14 +77,14 @@ var Module = {
                 container.scrollTop = 0;
                 resetSearchState();
                 searchHint.textContent = '検索文字列を入力してください';
+                searchHint.classList.remove('is-error');
                 setBusy(false);
-                setRuntimeStatus('検索できます', 'ready');
                 searchInput.focus();
             };
 
             reader.onerror = function (error) {
                 console.error('ファイルの読み込みエラー:', error);
-                setRuntimeStatus('ファイルを読み込めませんでした', 'error');
+                setAppStatus('ファイルを読み込めませんでした', 'error');
                 setBusy(false);
             };
 
@@ -142,10 +139,9 @@ var Module = {
             updateNavigationState();
         }
 
-        function setRuntimeStatus(message, state) {
-            runtimeStatusText.textContent = message;
-            runtimeStatus.classList.toggle('is-ready', state === 'ready');
-            runtimeStatus.classList.toggle('is-error', state === 'error');
+        function setAppStatus(message, state) {
+            searchHint.textContent = message;
+            searchHint.classList.toggle('is-error', state === 'error');
         }
 
         function resetSearchState() {
@@ -346,13 +342,11 @@ var Module = {
     },
 
     onAbort(reason) {
-        const runtimeStatus = document.getElementById('runtimeStatus');
-        const runtimeStatusText = document.getElementById('runtimeStatusText');
+        const searchHint = document.getElementById('searchHint');
 
-        if (runtimeStatus && runtimeStatusText) {
-            runtimeStatus.classList.remove('is-ready');
-            runtimeStatus.classList.add('is-error');
-            runtimeStatusText.textContent = 'Wasmの読み込みに失敗しました';
+        if (searchHint) {
+            searchHint.classList.add('is-error');
+            searchHint.textContent = 'Wasmの読み込みに失敗しました';
         }
 
         console.error('Wasmの初期化に失敗しました:', reason);
