@@ -22,7 +22,6 @@ var Module = {
         const searchHint = document.getElementById('searchHint');
 
         const charWidth = getCharWidth();
-        const lineHeight = getLineHeight(container);
 
         fileInput.disabled = false;
 
@@ -251,28 +250,21 @@ var Module = {
 
             activeMatchPosition = nextPosition;
             currentMatchElement.textContent = formatNumber(nextPosition + 1) + '文字目';
-            scrollToPosition(nextPosition, pattern.length);
-            highlightMatches(nextPosition);
+            scrollToPosition(nextPosition);
+            requestAnimationFrame(function () {
+                highlightMatches(nextPosition);
+            });
         }
 
-        function scrollToPosition(position, length) {
-            const textNode = displayArea.firstChild;
-            const range = document.createRange();
-            range.setStart(textNode, position);
-            range.setEnd(textNode, Math.min(position + Math.max(length, 1), textNode.length));
+        function scrollToPosition(position) {
+            const metrics = getLayoutMetrics();
+            const targetLine = Math.floor(position / metrics.charsPerLine);
+            const targetTop = metrics.paddingTop + (targetLine * metrics.lineHeight) - (container.clientHeight / 2) + (metrics.lineHeight / 2);
 
-            const rect = range.getClientRects()[0];
-            range.detach();
-
-            if (!rect) {
-                return;
-            }
-
-            const containerRect = container.getBoundingClientRect();
-            const targetTop = container.scrollTop + rect.top - containerRect.top - (container.clientHeight / 2) + (rect.height / 2);
             container.scrollTo({
                 top: Math.max(0, targetTop),
-                behavior: 'smooth'
+                left: 0,
+                behavior: 'auto'
             });
         }
 
@@ -326,17 +318,27 @@ var Module = {
         }
 
         function getVisibleCharacterRange() {
+            const metrics = getLayoutMetrics();
+            const firstVisibleLine = Math.floor(Math.max(container.scrollTop - metrics.paddingTop, 0) / metrics.lineHeight);
+            const visibleLines = Math.ceil(container.clientHeight / metrics.lineHeight) + 1;
+            const textLength = displayArea.textContent.length;
+
+            return {
+                start: Math.min(firstVisibleLine * metrics.charsPerLine, textLength),
+                end: Math.min((firstVisibleLine + visibleLines) * metrics.charsPerLine, textLength)
+            };
+        }
+
+        function getLayoutMetrics() {
             const displayStyle = getComputedStyle(displayArea);
             const horizontalPadding = parseFloat(displayStyle.paddingLeft) + parseFloat(displayStyle.paddingRight);
             const contentWidth = Math.max(displayArea.clientWidth - horizontalPadding, charWidth);
             const charsPerLine = Math.max(Math.floor(contentWidth / charWidth), 1);
-            const firstVisibleLine = Math.floor(container.scrollTop / lineHeight);
-            const visibleLines = Math.ceil(container.clientHeight / lineHeight);
-            const textLength = displayArea.textContent.length;
 
             return {
-                start: Math.min(firstVisibleLine * charsPerLine, textLength),
-                end: Math.min((firstVisibleLine + visibleLines) * charsPerLine, textLength)
+                charsPerLine,
+                lineHeight: getLineHeight(container),
+                paddingTop: parseFloat(displayStyle.paddingTop)
             };
         }
     },
